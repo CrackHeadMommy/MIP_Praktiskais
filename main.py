@@ -1,3 +1,5 @@
+import game_state
+import random
 print("hello world")
 # TODO:
 # Lietas, kas obligāti jābūt kodā pēc PD1 norādēm:
@@ -12,3 +14,10 @@ print("hello world")
 # heiristiskā novērtējuma funkcijas izstrāde un tās pielietošana laikā, kad datoram ir jāveic gājiens
 # Minimaksa algoritms un Alfa-beta algoritms (abiem ir jābūt realizētiem kā Pārlūkošana uz priekšu pār n-gājieniem)
 
+######### Spēles iestatīšana #########
+length = int(input("Ievadi skaitļu virknes garumu: "))
+def get_random_sequence(length):
+    sequence = []
+    for _ in range(length):
+        sequence.append(random.randint(1, 3))
+    return sequence
