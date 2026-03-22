@@ -71,7 +71,7 @@ def apply_move_to_state(previous_state: GameState, index_to_remove: int) -> tupl
 def generate_game_tree_from_state(starting_state: GameState, depth_limit: int) -> GameTreeNode:
     # Ģenerē spēles koka daļu līdz norādītajam dziļumam.
     # Dod algoritmu funkcijām gatavu datu struktūru.
-    root_node = GameTreeNode(game_state=copy_game_state(starting_state))
+    root_node = GameTreeNode(game_state = copy_game_state(starting_state))
     _generate_children_recursively(root_node, depth_limit)
     return root_node
 
