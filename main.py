@@ -11,6 +11,8 @@
 # heiristiskā novērtējuma funkcijas izstrāde un tās pielietošana laikā, kad datoram ir jāveic gājiens
 # Minimaksa algoritms un Alfa-beta algoritms (abiem ir jābūt realizētiem kā Pārlūkošana uz priekšu pār n-gājieniem)
 
+
+import algorithms as alg
 import random
 from dataclasses import dataclass, field
 from typing import Optional
@@ -27,7 +29,7 @@ MAX_SEQUENCE_LENGTH = 25
 class GameSession:
     # Glabā spēles sesijas stāvokli. *Priekš GUI*.
     current_state: Optional[gs.GameState] = None
-    selected_algorithm: str = "Nejaušs"
+    selected_algorithm: str = "Min-Max"
     tree_depth_limit: int = 2
     latest_tree_root: Optional[gs.GameTreeNode] = None
     status_messages: list[str] = field(default_factory=list)
@@ -78,27 +80,22 @@ def mark_taken_slot(game_session: GameSession, current_index: int, taken_by: str
     game_session.slot_taken_by[removed_slot_index] = taken_by
 
 
-def choose_computer_child_node(
-    tree_root: gs.GameTreeNode, selected_algorithm: str
-) -> tuple[Optional[gs.GameTreeNode], str]:
-    
-    # Nodrošina algoritmu izvēles.
-    # Šobrīd visi varianti izmanto nejaušu izvēli.
-    if len(tree_root.children) == 0:
+def choose_computer_child_node(current_state: gs.GameState, selected_algorithm: str, depth_limit: int) -> tuple[Optional[gs.GameTreeNode], str]:
+
+    result = alg.choose_best_move(current_state, depth_limit, selected_algorithm)
+    best_child = result.best_child
+
+    if best_child is None:
         return None, "Kļūda: Datoram nav derīgu gājienu."
 
-    chosen_child_node = random.choice(tree_root.children)
+    msg = (
+        f'Datora algoritms "{selected_algorithm}" izvēlējās gājienu. '
+        f'Laiks: {result.elapsed_ms:.2f} ms; '
+        f'Ģenerētas virsotnes: {result.stats.generated_nodes}; '
+        f'Novērtētas virsotnes: {result.stats.evaluated_nodes}.'
+    )
 
-    if selected_algorithm == "Nejaušs":
-        algorithm_message = "Dators izvēlējās gājienu nejauši."
-    elif selected_algorithm == "Min-Max":
-        algorithm_message = 'Datora algoritms "Min-Max" izvēlējās gājienu.'
-    elif selected_algorithm == "Alfa-Beta":
-        algorithm_message = 'Datora algoritms "Alfa-Beta" izvēlējās gājienu.'
-    else:
-        algorithm_message = "Kļūda: Nezināms algoritms. Dators izvēlējās gājienu nejauši."
-
-    return chosen_child_node, algorithm_message
+    return best_child, msg
 
 
 def try_read_integer(value, default_value: int) -> int:
@@ -152,6 +149,12 @@ def start_new_game(window, values, game_session: GameSession) -> None:
 
 
 def make_computer_move_if_needed(game_session: GameSession) -> None:
+    # Dators izdara gājienu tikai tad, ja:
+    # - spēle ir sākta
+    # - ir datora gājiens
+    # - spēle nav beigusies
+    if game_session.current_state is None:
+        return
 
     if game_session.current_state.current_turn != "computer":
         return
@@ -159,33 +162,61 @@ def make_computer_move_if_needed(game_session: GameSession) -> None:
     if is_game_over(game_session.current_state):
         return
 
-    # Ģenerē spēles koka daļu no šobrīdējā stāvokļa, lai dators izvēlas nākamo gājienu no reāli pieejamiem mezgliem.
+    # Ģenerē spēles koka daļu no šobrīdējā stāvokļa (prasība: koks tiek ģenerēts un glabāts datu struktūrā).
     game_session.latest_tree_root = gs.generate_game_tree_from_state(
-        starting_state=game_session.current_state,
-        depth_limit=game_session.tree_depth_limit,
+        starting_state = game_session.current_state,
+        depth_limit = game_session.tree_depth_limit,
     )
 
-    chosen_child_node, algorithm_message = choose_computer_child_node(
-        tree_root=game_session.latest_tree_root,
-        selected_algorithm=game_session.selected_algorithm,
-    )
-
-    if chosen_child_node is None:
-        add_status_message(game_session, "kļūda: Dators nevarēja izdarīt gājienu.")
+    if game_session.latest_tree_root is None or len(game_session.latest_tree_root.children) == 0:
+        add_status_message(game_session, "Kļūda: Datoram nav derīgu gājienu.")
         return
 
-    # Atzīmē noņemto elementu arī kastu kartējumā,
-    # lai UI rāda, kuru skaitli paņēma dators.
+    selected_algorithm = game_session.selected_algorithm
+
+
+    # Min-Max / Alfa-Beta (meklēšana uz priekšu pār n-gājieniem + heiristika)
+    # alg.choose_best_move atgriež SearchResult ar:
+    # - best_child (GameTreeNode)
+    # - elapsed_ms, stats.generated_nodes, stats.evaluated_nodes
+    result = alg.choose_best_move(
+        start_state = game_session.current_state,
+        depth_limit = game_session.tree_depth_limit,
+        algorithm_name = selected_algorithm,
+    )
+
+    chosen_child_node = result.best_child
+
+    if chosen_child_node is None:
+        # Ja kaut kas notiek (nevajadzētu), iekrīt uz nejaušo.
+        chosen_child_node = random.choice(game_session.latest_tree_root.children)
+        algorithm_message = (
+            f'Kļūda: "{selected_algorithm}" neatgrieza gājienu, izvēlēts nejaušs gājiens.'
+        )
+    else:
+        algorithm_message = (
+            f'Datora algoritms "{selected_algorithm}" izvēlējās gājienu. '
+            f'Laiks: {result.elapsed_ms:.2f} ms; '
+            f'Ģenerētas virsotnes: {result.stats.generated_nodes}; '
+            f'Novērtētas virsotnes: {result.stats.evaluated_nodes}.'
+        )
+
+    # Pielieto izvēlēto gājienu spēles sesijai
     removed_current_index = chosen_child_node.removed_index
     removed_value = chosen_child_node.removed_value
+
+    # Atzīmē noņemto elementu UI kartējumā (lai poga kļūst "datora paņemta")
     if removed_current_index is not None:
         mark_taken_slot(game_session, removed_current_index, "computer")
 
+    # Atjaunina spēles stāvokli
     game_session.current_state = chosen_child_node.game_state
 
+    # Žurnāls
     add_status_message(game_session, algorithm_message)
     add_status_message(game_session, f"Dators noņēma skaitli {removed_value}.")
 
+    # Ja spēle beigusies -> uzvarētājs
     if is_game_over(game_session.current_state):
         add_status_message(game_session, get_winner_text(game_session.current_state))
 
@@ -200,7 +231,7 @@ def handle_human_move(window, game_session: GameSession, selected_slot_index: in
         return
 
     if is_game_over(game_session.current_state):
-        gui.show_error('Kļūda: Spēle jau ir beigusies. Spied "Pārstartēt".')
+        gui.show_error('Kļūda: Spēle jau ir beigusies. Spied "Restartēt".')
         return
 
     # Pārveido nospiestās kastes pozīciju uz indeksu pašreizējā virknē.
