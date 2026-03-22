@@ -65,15 +65,13 @@ def immediate_delta_for_removed_value(current_turn: str, removed_value: int) -> 
 def heuristic_evaluate(state: gs.GameState) -> float:
     """
     Heiristika: pašreizējais punktu starpības stāvoklis +
-    aptuvenā nākotnes ietekme, simulējot "saprātīgu" izvēli
-    (katrs spēlētājs ņem sev izdevīgāko: 3 > 2 > 1).
+    aptuvenā nākotnes ietekme (katrs spēlētājs ņem sev izdevīgāko: 3 > 2 > 1).
+    Greedy simulācija ir emulēta ar formūlām, bez cikla.
     """
     diff = state.computer_score - state.human_score
 
     # saskaita atlikušos skaitļus
-    c1 = 0
-    c2 = 0
-    c3 = 0
+    c1 = c2 = c3 = 0
     for v in state.number_sequence:
         if v == 1:
             c1 += 1
@@ -83,33 +81,76 @@ def heuristic_evaluate(state: gs.GameState) -> float:
             c3 += 1
 
     turn = state.current_turn
+    total_moves = c1 + c2 + c3
 
-    # greedy simulācija līdz beigām tikai uz skaitu (ne indeksiem)
-    # lai ātri iegūtu "tendenci" kas notiks tālāk.
-    while (c1 + c2 + c3) > 0:
-        if turn == "computer":
-            if c3 > 0:
-                c3 -= 1
-                diff += 1
-            elif c2 > 0:
-                c2 -= 1
-            else:
-                c1 -= 1
-                diff -= 1
-            turn = "human"
+    # saskaita, cik palika izdevīgo gājienu 
+    # (koeficientus var mainīt, jo tam ir aptuvēna nozīme)
+    diff += 0.3 * c3
+    diff -= 0.1 * c2
+    diff -= 0.3 * c1
+
+    # ņem vērā kas veic gājienu un cik skaitļu palika
+    if turn == "computer":
+        diff += 0.1 * total_moves
+        computer_first = True
+    else:
+        diff -= 0.1 * total_moves
+        computer_first = False
+
+    # greedy simulācija, ņemot vērā papildus aprēķinus (optimizēta)
+    # diff = greedy_simulation(diff, c1, c2, c3, turn)
+
+    """
+    Šeit es mēģināju optimizācijai greedy simulācijas vietā izmantot formūlas, 
+    lai nebūtu cikla (tagad ir O(1) sarežģītība, instead of O(n)), jo spēle pašlaik ir pietiekami vienkārša. 
+    Greedy ciklu (mazliet pamainīto uz atsevišķo funkciju) atstāju ka komentāru
+    """
+    
+    # skaita, cik skaitļu paņems spēlētājs, kas veic pirmo gājienu, ja skaitļu rinda ir nepara
+    def split_count(total: int, first: bool) -> Tuple[int, int]:
+        half = total // 2
+        if total % 2 == 0:
+            return half, half
         else:
-            if c3 > 0:
-                c3 -= 1
-                diff -= 1
-            elif c2 > 0:
-                c2 -= 1
-            else:
-                c1 -= 1
-                diff += 1
-            turn = "computer"
+            return half + 1 if first else half, half if first else half + 1
+
+    comp_3, hum_3 = split_count(c3, computer_first)
+    comp_1, hum_1 = split_count(c1, computer_first)
+
+    diff += comp_3 - hum_3
+    diff -= comp_1 - hum_1
 
     return float(diff)
 
+"""
+def greedy_simulation(diff: float, c1: int, c2: int, c3: int, turn: str) -> float:
+    #šī greedy funkcija ir labāk piemerota lielākam tree depth (3-4)
+    
+    computer_turn = (turn == "computer")
+
+    while (c1 + c2 + c3) > 0:
+        if c3 > 0:
+            take = c3
+            c3 = 0
+            if computer_turn:
+                diff += take
+            else:
+                diff -= take
+        elif c2 > 0:
+            take = c2
+            c2 = 0
+        elif c1 > 0:
+            take = c1
+            c1 = 0
+            if computer_turn:
+                diff -= take
+            else:
+                diff += take
+
+        computer_turn = False
+
+    return diff
+"""
 
 def ordered_move_indices(state: gs.GameState) -> List[int]:
     """
@@ -124,16 +165,16 @@ def ordered_move_indices(state: gs.GameState) -> List[int]:
         scored.append((delta, idx))
 
     # MAX: lielākais delta pirmais, MIN: mazākais delta pirmais
-    scored.sort(reverse=is_max)
+    scored.sort(reverse = is_max)
     return [idx for _, idx in scored]
 
 
 def make_child_node(parent_state: gs.GameState, index_to_remove: int, stats: SearchStats) -> gs.GameTreeNode:
     child_state, removed_value = gs.apply_move_to_state(parent_state, index_to_remove)
     child_node = gs.GameTreeNode(
-        game_state=child_state,
-        removed_index=index_to_remove,
-        removed_value=removed_value,
+        game_state = child_state,
+        removed_index = index_to_remove,
+        removed_value = removed_value,
     )
     stats.generated_nodes += 1
     return child_node
@@ -143,13 +184,13 @@ def make_child_node(parent_state: gs.GameState, index_to_remove: int, stats: Sea
 
 def minimax_choose_move(start_state: gs.GameState, depth_limit: int) -> SearchResult:
     start = perf_counter()
-    stats = SearchStats(generated_nodes=1, evaluated_nodes=0)
-    root = gs.GameTreeNode(game_state=gs.copy_game_state(start_state))
+    stats = SearchStats(generated_nodes = 1, evaluated_nodes = 0)
+    root = gs.GameTreeNode(game_state = gs.copy_game_state(start_state))
 
     best_score, best_child = _minimax(root, depth_limit, stats)
 
     elapsed_ms = (perf_counter() - start) * 1000.0
-    return SearchResult(best_child=best_child, best_score=best_score, stats=stats, elapsed_ms=elapsed_ms)
+    return SearchResult(best_child = best_child, best_score = best_score, stats = stats, elapsed_ms = elapsed_ms)
 
 
 def _minimax(node: gs.GameTreeNode, depth_left: int, stats: SearchStats) -> Tuple[float, Optional[gs.GameTreeNode]]:
@@ -203,8 +244,9 @@ def _alphabeta(
     depth_left: int,
     alpha: float,
     beta: float,
-    stats: SearchStats
-) -> Tuple[float, Optional[gs.GameTreeNode]]:
+    stats: SearchStats 
+    ) -> Tuple[float, Optional[gs.GameTreeNode]]:
+
     state = node.game_state
 
     if depth_left <= 0 or is_terminal_state(state):
