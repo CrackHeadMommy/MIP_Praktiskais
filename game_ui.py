@@ -32,25 +32,6 @@ def parse_slot_index_from_number_event(event_text: str) -> Optional[int]:
         return None
 
 
-def build_number_button_row(max_sequence_length: int) -> list:
-    number_buttons = []
-
-    # Izveido masīvu (rindu) ar kastēm (GUI pogām) līdz maksimālajam garumam.
-    for button_index in range(max_sequence_length):
-        number_buttons.append(
-            sg.Button(
-                "",
-                key=f"-NUM-{button_index}",
-                size=(4, 1),
-                disabled=True,
-                visible=False,
-                pad=(2, 6),
-            )
-        )
-
-    return number_buttons
-
-
 def build_number_button_grid(max_sequence_length: int, max_columns: int = 10) -> list:
     # Sataisa režģi ar kastēm (pogām) pa 10 vienā rindā, lai visas būtu redzamas.
     number_button_grid = []
@@ -148,7 +129,7 @@ def create_window(max_sequence_length: int):
         sg.Combo(["Cilvēks", "Dators"], default_value="Cilvēks", readonly=True, key="-START-PLAYER-"),
 
         sg.Text("Datora algoritms:"),
-        sg.Combo(["Nejaušs", "Min-Max", "Alfa-Beta"], default_value="Nejaušs", readonly=True, key="-ALGORITHM-"),
+        sg.Combo(["Min-Max", "Alfa-Beta"], default_value="Min-Max", readonly=True, key="-ALGORITHM-"),
 
         sg.Text("Koka dziļums (1-4):"),
         sg.Spin(values=[1, 2, 3, 4], initial_value=2, size=(4, 1), key="-TREE-DEPTH-"),
@@ -176,7 +157,7 @@ def create_window(max_sequence_length: int):
 
     # Notikumu žurnāls (jeb "log"):
     status_log_area = [
-        sg.Multiline("", size=(100, 10), key="-STATUS-LOG-", disabled=True, autoscroll=True),
+        sg.Multiline("", size=(100, 10), key="-STATUS-LOG-", disabled=True, autoscroll=True,  expand_x=True, expand_y=True),
     ]
 
     layout = [
@@ -189,4 +170,4 @@ def create_window(max_sequence_length: int):
         status_log_area,
     ]
 
-    return sg.Window("LD1 Spele_42", layout, finalize=True)
+    return sg.Window("LD1 Spele_42", layout, finalize=True, resizable=True)
