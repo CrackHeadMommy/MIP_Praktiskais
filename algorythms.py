@@ -34,20 +34,17 @@ def terminal_score(state: gs.GameState) -> int:
     return state.computer_score - state.human_score
 
 
-def immediate_delta_for_removed_value(current_turn: str, removed_value: int) -> int:
+def immediate_delta_for_removed_value(state: gs.GameState, removed_value: int) -> int:
     """
-    Aprēķina momentāno izmaiņu (computer_score - human_score) pēc viena gājiena,
-    ja pašreizējais gājiena veicējs noņem removed_value.
+    Aprēķina momentāno izmaiņu (computer_score - human_score) pēc viena gājiena.
+    """
+    current_turn = state.current_turn
 
-    current_turn == "computer":
-        1 -> -1 (dators zaudē punktu)
-        2 ->  0
-        3 -> +1 (cilvēks zaudē punktu)
-    current_turn == "human":
-        1 -> +1 (cilvēks zaudē punktu)
-        2 ->  0
-        3 -> -1 (dators zaudē punktu)
-    """
+    if removed_value == 4:
+        if current_turn == "computer":
+            return gs.get_box_four_score_change(state.computer_score)
+        return -gs.get_box_four_score_change(state.human_score)
+
     if current_turn == "computer":
         if removed_value == 3:
             return +1
@@ -62,6 +59,13 @@ def immediate_delta_for_removed_value(current_turn: str, removed_value: int) -> 
         return -1  # 3
 
 
+def projected_box_four_score_change(player_score: int, pickup_count: int) -> int:
+    # ja 4 panem para reizes, efekts izlidizinas.
+    if pickup_count % 2 == 0:
+        return 0
+    return gs.get_box_four_score_change(player_score)
+
+
 def heuristic_evaluate(state: gs.GameState) -> float:
     """
     Heiristika: pašreizējais punktu starpības stāvoklis +
@@ -71,23 +75,25 @@ def heuristic_evaluate(state: gs.GameState) -> float:
     diff = state.computer_score - state.human_score
 
     # saskaita atlikušos skaitļus
-    c1 = c2 = c3 = 0
-    for v in state.number_sequence:
-        if v == 1:
-            c1 += 1
-        elif v == 2:
-            c2 += 1
-        else:
-            c3 += 1
+    count_ones = count_twos = count_threes = count_fours = 0
+    for value in state.number_sequence:
+        if value == 1:
+            count_ones += 1
+        elif value == 2:
+            count_twos += 1
+        elif value == 3:
+            count_threes += 1
+        elif value == 4:
+            count_fours += 1
 
     turn = state.current_turn
-    total_moves = c1 + c2 + c3
+    total_moves = count_ones + count_twos + count_threes + count_fours
 
     # saskaita, cik palika izdevīgo gājienu 
     # (koeficientus var mainīt, jo tam ir aptuvēna nozīme)
-    diff += 0.3 * c3
-    diff -= 0.1 * c2
-    diff -= 0.3 * c1
+    diff += 0.3 * count_threes
+    diff -= 0.1 * count_twos
+    diff -= 0.3 * count_ones
 
     # ņem vērā kas veic gājienu un cik skaitļu palika
     if turn == "computer":
@@ -98,7 +104,7 @@ def heuristic_evaluate(state: gs.GameState) -> float:
         computer_first = False
 
     # greedy simulācija, ņemot vērā papildus aprēķinus (optimizēta)
-    # diff = greedy_simulation(diff, c1, c2, c3, turn)
+    # diff = greedy_simulation(diff, count_ones, count_twos, count_threes, turn)
 
     """
     Šeit es mēģināju optimizācijai greedy simulācijas vietā izmantot formūlas, 
@@ -114,11 +120,14 @@ def heuristic_evaluate(state: gs.GameState) -> float:
         else:
             return half + 1 if first else half, half if first else half + 1
 
-    comp_3, hum_3 = split_count(c3, computer_first)
-    comp_1, hum_1 = split_count(c1, computer_first)
+    computer_threes, human_threes = split_count(count_threes, computer_first)
+    computer_ones, human_ones = split_count(count_ones, computer_first)
+    computer_fours, human_fours = split_count(count_fours, computer_first)
 
-    diff += comp_3 - hum_3
-    diff -= comp_1 - hum_1
+    diff += computer_threes - human_threes
+    diff -= computer_ones - human_ones
+    diff += projected_box_four_score_change(state.computer_score, computer_fours)
+    diff -= projected_box_four_score_change(state.human_score, human_fours)
 
     return float(diff)
 
@@ -161,7 +170,7 @@ def ordered_move_indices(state: gs.GameState) -> List[int]:
     is_max = (state.current_turn == "computer")
     scored = []
     for idx, val in enumerate(state.number_sequence):
-        delta = immediate_delta_for_removed_value(state.current_turn, val)
+        delta = immediate_delta_for_removed_value(state, val)
         scored.append((delta, idx))
 
     # MAX: lielākais delta pirmais, MIN: mazākais delta pirmais
