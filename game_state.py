@@ -30,6 +30,13 @@ def copy_game_state(game_state: GameState) -> GameState:
     )
 
 
+def get_box_four_score_change(player_score: int) -> int:
+    # Ja spēlētāja punkti ir pāra skaitlis, tad +1, ja nepāra, tad -1.
+    if player_score % 2 == 0:
+        return 1
+    return -1
+
+
 def apply_move_to_state(previous_state: GameState, index_to_remove: int) -> tuple[GameState, int]:
     # Veic vienu gājienu un atgriež jauno stāvokli.
     new_sequence = previous_state.number_sequence.copy()
@@ -47,6 +54,9 @@ def apply_move_to_state(previous_state: GameState, index_to_remove: int) -> tupl
             new_computer_score -= 1
         elif removed_value == 3:
             new_computer_score -= 1
+        elif removed_value == 4:
+            # 4. kaste ietekmē tikai to spēlētāju, kurš to paņem.
+            new_human_score += get_box_four_score_change(previous_state.human_score)
         next_turn = "computer"
     # Aprēķina punktus datora gājienam.
     else:
@@ -57,6 +67,9 @@ def apply_move_to_state(previous_state: GameState, index_to_remove: int) -> tupl
             new_computer_score -= 1
         elif removed_value == 3:
             new_human_score -= 1
+        elif removed_value == 4:
+            # Ja datoram punkti ir pāra skaitlis, dators iegūst +1, citādi -1.
+            new_computer_score += get_box_four_score_change(previous_state.computer_score)
         next_turn = "human"
 
     next_state = GameState(
