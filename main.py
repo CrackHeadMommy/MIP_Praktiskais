@@ -12,7 +12,7 @@
 # Minimaksa algoritms un Alfa-beta algoritms (abiem ir jābūt realizētiem kā Pārlūkošana uz priekšu pār n-gājieniem)
 
 
-import algorithms as alg
+import algorythms as alg
 import random
 from dataclasses import dataclass, field
 from typing import Optional
@@ -23,8 +23,6 @@ import game_ui as gui
 MIN_SEQUENCE_LENGTH = 15
 MAX_SEQUENCE_LENGTH = 25
 
-# Šo komentāru var izdzēst pirms iesnedz, vnk ja kādam noder:
-# @dataclass lieto lai vieglāk glabātu datus un nebūtu jāraksta garas klases ar __init__ metodēm. 
 @dataclass
 class GameSession:
     # Glabā spēles sesijas stāvokli. *Priekš GUI*.
@@ -41,7 +39,7 @@ class GameSession:
 
 def create_random_number_sequence(sequence_length: int) -> list[int]:
     # Ģenerē sākuma virkni jaunai spēlei.
-    return [random.randint(1, 3) for _ in range(sequence_length)]
+    return [random.randint(1, 4) for _ in range(sequence_length)]
 
 
 def is_game_over(game_state: Optional[gs.GameState]) -> bool:
