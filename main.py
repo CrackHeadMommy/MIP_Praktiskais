@@ -1,7 +1,6 @@
-# LD1:
-# Lietas, kas obligāti jābūt kodā pēc PD1 norādēm:
-# izvēlēties, kurš uzsāk spēli: cilvēks vai dators;
-# izvēlēties, kuru algoritmu izmantos dators konkrētajā spēles reizē: Minimaksa algoritmu vai Alfa-beta algoritmu;
+# Lietas, kam obligāti jābūt kodā pēc PD1 norādēm:
+# izvēle, kurš uzsāk spēli: cilvēks vai dators;
+# izvēle, kuru algoritmu izmantos dators konkrētajā spēles reizē: Min-Max algoritmu vai Alfa-beta algoritmu;
 # izpildīt gājienus un redzēt izmaiņas spēles laukumā pēc gājienu (gan cilvēka, gan datora) izpildes;
 # uzsākt spēli atkārtoti pēc kārtējās spēles pabeigšanas.
 
