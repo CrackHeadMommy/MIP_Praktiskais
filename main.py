@@ -78,24 +78,6 @@ def mark_taken_slot(game_session: GameSession, current_index: int, taken_by: str
     game_session.slot_taken_by[removed_slot_index] = taken_by
 
 
-def choose_computer_child_node(current_state: gs.GameState, selected_algorithm: str, depth_limit: int) -> tuple[Optional[gs.GameTreeNode], str]:
-
-    result = alg.choose_best_move(current_state, depth_limit, selected_algorithm)
-    best_child = result.best_child
-
-    if best_child is None:
-        return None, "Kļūda: Datoram nav derīgu gājienu."
-
-    msg = (
-        f'Datora algoritms "{selected_algorithm}" izvēlējās gājienu. '
-        f'Laiks: {result.elapsed_ms:.2f} ms; '
-        f'Ģenerētas virsotnes: {result.stats.generated_nodes}; '
-        f'Novērtētas virsotnes: {result.stats.evaluated_nodes}.'
-    )
-
-    return best_child, msg
-
-
 def try_read_integer(value, default_value: int) -> int:
     try:
         return int(value)
